@@ -135,6 +135,7 @@ BR.TrackAnalysis = L.Class.extend({
             maxspeed: {},
             surface: {},
             smoothness: {},
+            trainConstruction: {},
         };
 
         this.totalRouteDistance = 0.0;
@@ -206,6 +207,15 @@ BR.TrackAnalysis = L.Class.extend({
                             break;
                     }
                 }
+            }
+
+            // Loop over the actual node points to determine if any violate curvature rules
+            for (
+                let coordinateIndex = 1;
+                coordinateIndex < segments[segmentIndex].feature.geometry.coordinates.length;
+                coordinateIndex++
+            ) {
+                const coordinate = segments[segmentIndex].feature.geometry.coordinates[coordinateIndex];
             }
         }
 
