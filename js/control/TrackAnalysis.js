@@ -212,10 +212,46 @@ BR.TrackAnalysis = L.Class.extend({
             // Loop over the actual node points to determine if any violate curvature rules
             for (
                 let coordinateIndex = 1;
-                coordinateIndex < segments[segmentIndex].feature.geometry.coordinates.length;
+                coordinateIndex < segments[segmentIndex].feature.geometry.coordinates.length - 1;
                 coordinateIndex++
             ) {
+                if (coordinateIndex == 0) {
+                    continue;
+                }
+
                 const coordinate = segments[segmentIndex].feature.geometry.coordinates[coordinateIndex];
+
+                const point1 = segments[segmentIndex].feature.geometry.coordinates[coordinateIndex - 1];
+                const point2 = coordinate;
+                const point3 = segments[segmentIndex].feature.geometry.coordinates[coordinateIndex + 1];
+
+                const curvature = this.calculateCurvature(point1, point2, point3);
+
+                if (typeof analysis.trainConstruction['validCurvature'] === 'undefined') {
+                    analysis.trainConstruction['curvature'] = {
+                        formatted_name: i18next.t('sidebar.analysis.data.trainConstruction.curvature'),
+                        name: 'curvature',
+                        subtype: '',
+                        distance: 0.0,
+                    };
+                }
+
+                if (typeof analysis.trainConstruction['invalidCurvature'] === 'undefined') {
+                    analysis.trainConstruction['curvature'] = {
+                        formatted_name: i18next.t('sidebar.analysis.data.trainConstruction.curvature'),
+                        name: 'curvature',
+                        subtype: '',
+                        distance: 0.0,
+                    };
+                }
+
+                if (curvature > 0.0001) {
+                    // TODO this needs to be based on the actual distance between the points. 
+                    // We dont' have this currently, but we will when we switch to using the actual curvature calculation
+                    analysis.trainConstruction['validCurvature'] += 1.0;
+                } else {
+                    analysis.trainConstruction['invalidCurvature'] += 1.0;
+                }
             }
         }
 
@@ -665,5 +701,21 @@ BR.TrackAnalysis = L.Class.extend({
         }
 
         return wayTagsArray;
+    },
+
+    /**
+     * @param point1 - The first point
+     * @param point2 - The second point
+     * @param point3 - The third point
+     * 
+     * @returns {number} - The curvature of the three points
+     */
+    calculateCurvature(point1, point2, point3) {
+        // TODO: This is almost certainly wrong. I'm pretty sure this needs to be the arc radius approach.
+        const a = Math.sqrt(Math.pow(point2[0] - point1[0], 2) + Math.pow(point2[1] - point1[1], 2));
+        const b = Math.sqrt(Math.pow(point3[0] - point2[0], 2) + Math.pow(point3[1] - point2[1], 2));
+        const c = Math.sqrt(Math.pow(point1[0] - point3[0], 2) + Math.pow(point1[1] - point3[1], 2));
+
+        return 2 * Math.asin(Math.sqrt((a * b + b * c + c * a) * (a + b + c)) / (a * b * c));
     },
 });
