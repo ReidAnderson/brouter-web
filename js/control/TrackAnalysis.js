@@ -144,39 +144,50 @@ BR.TrackAnalysis = L.Class.extend({
         // ])
 
         // East/west or longitude distance between points 1 and 2
-        const distance1 = Math.sign(measuredPointLatitude - originPointLatitude) * geolib.getDistance(
-            { latitude: originPointLatitude, longitude: measuredPointLongitude },
-            { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
-            accuracy = 0.1
-        ) / 1000;
+        const distance1 =
+            (Math.sign(measuredPointLatitude - originPointLatitude) *
+                geolib.getDistance(
+                    { latitude: originPointLatitude, longitude: measuredPointLongitude },
+                    { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+                    (accuracy = 0.1)
+                )) /
+            1000;
 
         // North/south or latitude distance between points 1 and 2
-        const distance2 = Math.sign(measuredPointLongitude - originPointLongitude) * geolib.getDistance(
-            { latitude: measuredPointLatitude, longitude: originPointLongitude },
-            { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
-            accuracy = 0.1
-        ) / 1000;
+        const distance2 =
+            (Math.sign(measuredPointLongitude - originPointLongitude) *
+                geolib.getDistance(
+                    { latitude: measuredPointLatitude, longitude: originPointLongitude },
+                    { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+                    (accuracy = 0.1)
+                )) /
+            1000;
 
         // East/west or longitude distance between points 2 and 3
-        const distance3 = Math.sign(measuredPointLatitude - destinationPointLatitude) * geolib.getDistance(
-            { latitude: destinationPointLatitude, longitude: measuredPointLongitude },
-            { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
-            accuracy = 0.1
-        ) / 1000;
+        const distance3 =
+            (Math.sign(measuredPointLatitude - destinationPointLatitude) *
+                geolib.getDistance(
+                    { latitude: destinationPointLatitude, longitude: measuredPointLongitude },
+                    { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+                    (accuracy = 0.1)
+                )) /
+            1000;
 
         // North/south or latitude distance between points 2 and 3
-        const distance4 = Math.sign(measuredPointLongitude - destinationPointLongitude) * geolib.getDistance(
-            { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
-            { latitude: measuredPointLatitude, longitude: destinationPointLongitude },
-            accuracy = 0.1
-        ) / 1000;
-
+        const distance4 =
+            (Math.sign(measuredPointLongitude - destinationPointLongitude) *
+                geolib.getDistance(
+                    { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+                    { latitude: measuredPointLatitude, longitude: destinationPointLongitude },
+                    (accuracy = 0.1)
+                )) /
+            1000;
 
         let points = [
             [distance1, distance2],
             [0, 0],
-            [distance3, distance4]
-        ]
+            [distance3, distance4],
+        ];
 
         if (Math.abs(distance1) < 0.001 || Math.abs(distance3) < 0.001 || Math.abs(distance1 - distance3) < 0.001) {
             // If either of the latitudes are the same as the point we are measuring, our quadratic function will not be valid
@@ -185,18 +196,18 @@ BR.TrackAnalysis = L.Class.extend({
             points = [
                 [distance2, distance1],
                 [0, 0],
-                [distance4, distance3]
+                [distance4, distance3],
             ];
         }
 
         // console.log(points);
 
         // Extract x and y coordinates
-        const x = points.map(point => point[0]);
-        const y = points.map(point => point[1]);
+        const x = points.map((point) => point[0]);
+        const y = points.map((point) => point[1]);
 
         // Set up the system of equations matrix A
-        const A = x.map(xi => [xi**2, xi, 1]);
+        const A = x.map((xi) => [xi ** 2, xi, 1]);
 
         // Solve for the coefficients a, b, c
         const coefficients = math.lusolve(A, y);
@@ -234,10 +245,10 @@ BR.TrackAnalysis = L.Class.extend({
             const h = (b - a) / n;
             let sum = 0.5 * (f(a) + f(b));
             for (let i = 1; i < n; i++) {
-            sum += f(a + i * h);
+                sum += f(a + i * h);
             }
             return sum * h;
-        }  
+        }
 
         // Calculate the arc length using numerical integration
         const arcLength = trapezoidalIntegral(integrand, x1, x3, 2000);
@@ -266,7 +277,7 @@ BR.TrackAnalysis = L.Class.extend({
                     //throw new Error('Division by zero in secant method');
                 }
 
-                const rNext = r1 - f1 * (r1 - r0) / (f1 - f0);
+                const rNext = r1 - (f1 * (r1 - r0)) / (f1 - f0);
 
                 if (math.abs(rNext - r1) < tolerance) {
                     return rNext;
@@ -342,13 +353,13 @@ BR.TrackAnalysis = L.Class.extend({
         var latLngToGradeMap = {};
         var latLngToCurvatureMap = {};
 
-            for (let featureIndex = 0; featureIndex < geojsonFeatures[0]["features"].length; featureIndex++) {
-                const feature = geojsonFeatures[0]["features"][featureIndex];
-                
-                for (let geoIndex = 0; geoIndex < feature["geometry"]["coordinates"].length; geoIndex++) {
-                    latLngToGradeMap[feature["geometry"]["coordinates"][geoIndex]] = feature["properties"]["attributeType"];
-                }
+        for (let featureIndex = 0; featureIndex < geojsonFeatures[0]['features'].length; featureIndex++) {
+            const feature = geojsonFeatures[0]['features'][featureIndex];
+
+            for (let geoIndex = 0; geoIndex < feature['geometry']['coordinates'].length; geoIndex++) {
+                latLngToGradeMap[feature['geometry']['coordinates'][geoIndex]] = feature['properties']['attributeType'];
             }
+        }
 
         for (let segmentIndex = 0; segments && segmentIndex < segments.length; segmentIndex++) {
             for (
@@ -507,8 +518,12 @@ BR.TrackAnalysis = L.Class.extend({
             const trackLatLngs = this.trackPolyline.getLatLngs();
 
             for (let i = 0; i < trackLatLngs.length; i++) {
-                trackLatLngs[i]['grade'] = latLngToGradeMap[`${trackLatLngs[i]['lng']},${trackLatLngs[i]['lat']},${trackLatLngs[i]['alt']}`];
-                trackLatLngs[i]['curvature'] = latLngToCurvatureMap[`${trackLatLngs[i]['lng']},${trackLatLngs[i]['lat']},${trackLatLngs[i]['alt']}`];
+                trackLatLngs[i]['grade'] =
+                    latLngToGradeMap[`${trackLatLngs[i]['lng']},${trackLatLngs[i]['lat']},${trackLatLngs[i]['alt']}`];
+                trackLatLngs[i]['curvature'] =
+                    latLngToCurvatureMap[
+                        `${trackLatLngs[i]['lng']},${trackLatLngs[i]['lat']},${trackLatLngs[i]['alt']}`
+                    ];
             }
         }
 
@@ -687,7 +702,9 @@ BR.TrackAnalysis = L.Class.extend({
         $content.append(this.renderTable('maxspeed', analysis.maxspeed));
         $content.append($(`<h4 class="track-analysis-heading">${i18next.t('sidebar.analysis.header.grade')}</h4>`));
         $content.append(this.renderTable('grade', analysis.grade));
-        $content.append($(`<h4 class="track-analysis-heading">${i18next.t('sidebar.analysis.header.trainconstruction')}</h4>`));
+        $content.append(
+            $(`<h4 class="track-analysis-heading">${i18next.t('sidebar.analysis.header.trainconstruction')}</h4>`)
+        );
         $content.append(this.renderTable('trainconstruction', analysis.trainConstruction));
     },
 
@@ -837,7 +854,7 @@ BR.TrackAnalysis = L.Class.extend({
                 const grade = trackLatLngs[i].grade;
 
                 if (grade === undefined || curvature === undefined) {
-                    console.log("No grade or curvature found for this point");
+                    console.log('No grade or curvature found for this point');
                     continue;
                 }
 
@@ -876,7 +893,7 @@ BR.TrackAnalysis = L.Class.extend({
                         )
                     );
                 }
-            }    
+            }
         }
 
         return polylines;
@@ -1008,7 +1025,7 @@ BR.TrackAnalysis = L.Class.extend({
      * @param point1 - The first point
      * @param point2 - The second point
      * @param point3 - The third point
-     * 
+     *
      * @returns {number} - The curvature of the three points
      */
     calculateCurvature(point1, point2, point3) {
@@ -1017,6 +1034,6 @@ BR.TrackAnalysis = L.Class.extend({
         const b = Math.sqrt(Math.pow(point3[0] - point2[0], 2) + Math.pow(point3[1] - point2[1], 2));
         const c = Math.sqrt(Math.pow(point1[0] - point3[0], 2) + Math.pow(point1[1] - point3[1], 2));
 
-        return a+b+c;
+        return a + b + c;
     },
 });
