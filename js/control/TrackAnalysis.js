@@ -130,7 +130,20 @@ BR.TrackAnalysis = L.Class.extend({
         const destinationPointLatitude = point3[1];
         const destinationPointLongitude = point3[0];
 
-        // console.log("[", originPointLatitude, ",", originPointLongitude, "],[", measuredPointLatitude, ",", measuredPointLongitude, "],[", destinationPointLatitude, ",", destinationPointLongitude + "]");
+        console.log(
+            '[',
+            originPointLatitude,
+            ',',
+            originPointLongitude,
+            '],[',
+            measuredPointLatitude,
+            ',',
+            measuredPointLongitude,
+            '],[',
+            destinationPointLatitude,
+            ',',
+            destinationPointLongitude + ']'
+        );
 
         // console.log([
         //     { latitude: originPointLatitude, longitude: measuredPointLongitude },
@@ -200,7 +213,7 @@ BR.TrackAnalysis = L.Class.extend({
             ];
         }
 
-        // console.log(points);
+        console.log(points);
 
         // Extract x and y coordinates
         const x = points.map((point) => point[0]);
@@ -251,7 +264,7 @@ BR.TrackAnalysis = L.Class.extend({
         }
 
         // Calculate the arc length using numerical integration
-        const arcLength = trapezoidalIntegral(integrand, x1, x3, 2000);
+        const arcLength = Math.abs(trapezoidalIntegral(integrand, x1, x3, 2000));
 
         // Calculate the chord length
         //@ts-ignore
@@ -261,7 +274,7 @@ BR.TrackAnalysis = L.Class.extend({
             throw new Error('Chord is not a number');
         }
 
-        // console.log(`Arc length: ${arcLength}, Chord length: ${chord}`);
+        console.log(`Arc length: ${arcLength}, Chord length: ${chord}`);
 
         function solveForRUsingSecant(a, d, r0, r1) {
             const tolerance = 1e-8;
@@ -357,7 +370,11 @@ BR.TrackAnalysis = L.Class.extend({
             const feature = geojsonFeatures[0]['features'][featureIndex];
 
             for (let geoIndex = 0; geoIndex < feature['geometry']['coordinates'].length; geoIndex++) {
-                latLngToGradeMap[feature['geometry']['coordinates'][geoIndex]] = feature['properties']['attributeType'];
+                latLngToGradeMap[
+                    feature['geometry']['coordinates'][geoIndex][0] +
+                        ',' +
+                        feature['geometry']['coordinates'][geoIndex][1]
+                ] = feature['properties']['attributeType'];
             }
         }
 
@@ -452,7 +469,9 @@ BR.TrackAnalysis = L.Class.extend({
 
                 const curvature = this.calculateRadiusOfCurvature(point1, point2, point3);
 
-                latLngToCurvatureMap[coordinate] = curvature;
+                console.log(curvature);
+
+                latLngToCurvatureMap[coordinate[0] + ',' + coordinate[1]] = curvature;
 
                 if (typeof analysis.grade['valid'] === 'undefined') {
                     analysis.grade['valid'] = {
@@ -518,12 +537,9 @@ BR.TrackAnalysis = L.Class.extend({
             const trackLatLngs = this.trackPolyline.getLatLngs();
 
             for (let i = 0; i < trackLatLngs.length; i++) {
-                trackLatLngs[i]['grade'] =
-                    latLngToGradeMap[`${trackLatLngs[i]['lng']},${trackLatLngs[i]['lat']},${trackLatLngs[i]['alt']}`];
+                trackLatLngs[i]['grade'] = latLngToGradeMap[`${trackLatLngs[i]['lng']},${trackLatLngs[i]['lat']}`];
                 trackLatLngs[i]['curvature'] =
-                    latLngToCurvatureMap[
-                        `${trackLatLngs[i]['lng']},${trackLatLngs[i]['lat']},${trackLatLngs[i]['alt']}`
-                    ];
+                    latLngToCurvatureMap[`${trackLatLngs[i]['lng']},${trackLatLngs[i]['lat']}`];
             }
         }
 
