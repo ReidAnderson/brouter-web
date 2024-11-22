@@ -132,6 +132,7 @@ BR.Routing = L.Routing.extend({
             'move',
             L.bind(function (e) {
                 var latLng = e.latlng;
+                console.log(latLng);
                 if (latLng._feature) {
                     this._mouseMarker._feature = latLng._feature;
                     latLng._feature.fire('mousemove', e, true);

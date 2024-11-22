@@ -261,6 +261,9 @@ BR.Heightgraph = function (map, layersControl, routing, pois) {
                     interpolate: false,
                     normalize: false,
                 });
+                console.log(geojsonFeatures)
+                console.log(track.getLatLngs())
+                console.log(track)
                 this.addData(geojsonFeatures);
 
                 // re-add handlers

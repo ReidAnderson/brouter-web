@@ -346,7 +346,9 @@
         "highway": "Highway",
         "smoothness": "Smoothness",
         "surface": "Surface",
-        "maxspeed": "Maximum Speed"
+        "maxspeed": "Maximum Speed",
+        "grade": "Grade",
+        "trainconstruction": "Train Construction"
       },
       "table": {
         "category": "Category",
