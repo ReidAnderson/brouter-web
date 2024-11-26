@@ -130,20 +130,20 @@ BR.TrackAnalysis = L.Class.extend({
         const destinationPointLatitude = point3[1];
         const destinationPointLongitude = point3[0];
 
-        console.log(
-            '[',
-            originPointLatitude,
-            ',',
-            originPointLongitude,
-            '],[',
-            measuredPointLatitude,
-            ',',
-            measuredPointLongitude,
-            '],[',
-            destinationPointLatitude,
-            ',',
-            destinationPointLongitude + ']'
-        );
+        // console.log(
+        //     '[',
+        //     originPointLatitude,
+        //     ',',
+        //     originPointLongitude,
+        //     '],[',
+        //     measuredPointLatitude,
+        //     ',',
+        //     measuredPointLongitude,
+        //     '],[',
+        //     destinationPointLatitude,
+        //     ',',
+        //     destinationPointLongitude + ']'
+        // );
 
         // console.log([
         //     { latitude: originPointLatitude, longitude: measuredPointLongitude },
@@ -213,7 +213,7 @@ BR.TrackAnalysis = L.Class.extend({
             ];
         }
 
-        console.log(points);
+        // console.log(points);
 
         // Extract x and y coordinates
         const x = points.map((point) => point[0]);
@@ -274,7 +274,7 @@ BR.TrackAnalysis = L.Class.extend({
             throw new Error('Chord is not a number');
         }
 
-        console.log(`Arc length: ${arcLength}, Chord length: ${chord}`);
+        // console.log(`Arc length: ${arcLength}, Chord length: ${chord}`);
 
         function solveForRUsingSecant(a, d, r0, r1) {
             const tolerance = 1e-8;
@@ -465,11 +465,11 @@ BR.TrackAnalysis = L.Class.extend({
 
                 // Based on the height graph, it looks like the grade is calculated at the point we are going TO
                 // So that is how we should count distance
-                const grade = latLngToGradeMap[coordinate];
+                const grade = latLngToGradeMap[`${point2[0]},${point2[1]}`];
 
                 const curvature = this.calculateRadiusOfCurvature(point1, point2, point3);
 
-                console.log(curvature);
+                console.log(`point ${coordinate}: radius ${curvature}, grade ${grade}`);
 
                 latLngToCurvatureMap[coordinate[0] + ',' + coordinate[1]] = curvature;
 
