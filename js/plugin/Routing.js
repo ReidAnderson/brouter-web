@@ -126,12 +126,32 @@ BR.Routing = L.Routing.extend({
             })
         );
 
+        function findClosestKey(target1, target2, dictionary) {
+            let closestKey = null;
+            let smallestDistance = Infinity;
+
+            for (const key in dictionary) {
+                const [key1, key2] = key.split(',').map(Number);
+                const distance = Math.sqrt(Math.pow(target1 - key1, 2) + Math.pow(target2 - key2, 2));
+
+                if (distance < smallestDistance) {
+                    smallestDistance = distance;
+                    closestKey = key;
+                }
+            }
+
+            return closestKey;
+        }
+
         // Forward mousemove event to snapped feature (for Leaflet.Elevation to
         // update indicator), see also L.Routing.Edit._segmentOnMousemove
         this._edit._mouseMarker.on(
             'move',
             L.bind(function (e) {
                 var latLng = e.latlng;
+                const closestKey = findClosestKey(latLng.lng, latLng.lat, BR.Grade);
+                console.log(`For ${latLng}: Grade: ${BR.Grade[closestKey]} Curvature: ${BR.Curvature[closestKey]}`);
+
                 if (latLng._feature) {
                     this._mouseMarker._feature = latLng._feature;
                     latLng._feature.fire('mousemove', e, true);

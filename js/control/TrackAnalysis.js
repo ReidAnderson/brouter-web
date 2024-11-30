@@ -114,6 +114,205 @@ BR.TrackAnalysis = L.Class.extend({
     },
 
     /**
+     * This method calculates the radius of curvature between three points
+     */
+    calculateRadiusOfCurvature(point1, point2, point3) {
+        // const latLongPoints = [
+        //     [point1[1], point1[0]],
+        //     [point2[1], point2[0]],
+        //     [point3[1], point3[0]]
+        // ];
+
+        const measuredPointLatitude = point2[1];
+        const measuredPointLongitude = point2[0];
+        const originPointLatitude = point1[1];
+        const originPointLongitude = point1[0];
+        const destinationPointLatitude = point3[1];
+        const destinationPointLongitude = point3[0];
+
+        // console.log(
+        //     '[',
+        //     originPointLatitude,
+        //     ',',
+        //     originPointLongitude,
+        //     '],[',
+        //     measuredPointLatitude,
+        //     ',',
+        //     measuredPointLongitude,
+        //     '],[',
+        //     destinationPointLatitude,
+        //     ',',
+        //     destinationPointLongitude + ']'
+        // );
+
+        // console.log([
+        //     { latitude: originPointLatitude, longitude: measuredPointLongitude },
+        //     { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+        //     { latitude: measuredPointLatitude, longitude: originPointLongitude },
+        //     { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+        //     { latitude: destinationPointLatitude, longitude: measuredPointLongitude },
+        //     { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+        //     { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+        //     { latitude: measuredPointLatitude, longitude: destinationPointLongitude }
+        // ])
+
+        // East/west or longitude distance between points 1 and 2
+        const distance1 =
+            (Math.sign(measuredPointLatitude - originPointLatitude) *
+                geolib.getDistance(
+                    { latitude: originPointLatitude, longitude: measuredPointLongitude },
+                    { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+                    (accuracy = 0.1)
+                )) /
+            1000;
+
+        // North/south or latitude distance between points 1 and 2
+        const distance2 =
+            (Math.sign(measuredPointLongitude - originPointLongitude) *
+                geolib.getDistance(
+                    { latitude: measuredPointLatitude, longitude: originPointLongitude },
+                    { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+                    (accuracy = 0.1)
+                )) /
+            1000;
+
+        // East/west or longitude distance between points 2 and 3
+        const distance3 =
+            (Math.sign(measuredPointLatitude - destinationPointLatitude) *
+                geolib.getDistance(
+                    { latitude: destinationPointLatitude, longitude: measuredPointLongitude },
+                    { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+                    (accuracy = 0.1)
+                )) /
+            1000;
+
+        // North/south or latitude distance between points 2 and 3
+        const distance4 =
+            (Math.sign(measuredPointLongitude - destinationPointLongitude) *
+                geolib.getDistance(
+                    { latitude: measuredPointLatitude, longitude: measuredPointLongitude },
+                    { latitude: measuredPointLatitude, longitude: destinationPointLongitude },
+                    (accuracy = 0.1)
+                )) /
+            1000;
+
+        let points = [
+            [distance1, distance2],
+            [0, 0],
+            [distance3, distance4],
+        ];
+
+        if (Math.abs(distance1) < 0.001 || Math.abs(distance3) < 0.001 || Math.abs(distance1 - distance3) < 0.001) {
+            // If either of the latitudes are the same as the point we are measuring, our quadratic function will not be valid
+            // Swapping x/y should not change the arc length, chord, or radius calculations.
+            // We treat anything closer than a meter as being equal.
+            points = [
+                [distance2, distance1],
+                [0, 0],
+                [distance4, distance3],
+            ];
+        }
+
+        // console.log(points);
+
+        // Extract x and y coordinates
+        const x = points.map((point) => point[0]);
+        const y = points.map((point) => point[1]);
+
+        // Set up the system of equations matrix A
+        const A = x.map((xi) => [xi ** 2, xi, 1]);
+
+        // Solve for the coefficients a, b, c
+        const coefficients = math.lusolve(A, y);
+
+        // Extract the coefficients
+        const [a, b, c] = coefficients.map((coef) => coef[0]);
+
+        // console.log(`a: ${a}, b: ${b}, c: ${c}`);
+
+        // Define the derivative of the quadratic polynomial
+        function derivative(x) {
+            return 2 * a * x + b;
+        }
+
+        // Define the integrand for the arc length
+        function integrand(x) {
+            const power = math.pow(derivative(x), 2);
+            const add = math.add(1, power);
+            // @ts-ignore
+            return math.sqrt(add);
+        }
+
+        // console.log(`Integrand: ${integrand(5)}`);
+
+        // Define the points (x1, y1) and (x3, y3)
+        const x1 = points[0][0];
+        const y1 = points[0][1];
+        const x3 = points[2][0];
+        const y3 = points[2][1];
+
+        // a = lower bound
+        // b = upper bound
+        // n = number of trapezoids
+        function trapezoidalIntegral(f, a, b, n) {
+            const h = (b - a) / n;
+            let sum = 0.5 * (f(a) + f(b));
+            for (let i = 1; i < n; i++) {
+                sum += f(a + i * h);
+            }
+            return sum * h;
+        }
+
+        // Calculate the arc length using numerical integration
+        const arcLength = Math.abs(trapezoidalIntegral(integrand, x1, x3, 2000));
+
+        // Calculate the chord length
+        //@ts-ignore
+        const chord = math.sqrt(math.add(math.pow(x3 - x1, 2), math.pow(y3 - y1, 2)));
+
+        if (typeof chord !== 'number') {
+            throw new Error('Chord is not a number');
+        }
+
+        // console.log(`Arc length: ${arcLength}, Chord length: ${chord}`);
+
+        function solveForRUsingSecant(a, d, r0, r1) {
+            const tolerance = 1e-8;
+            const maxIterations = 1000;
+
+            let f0 = 2 * r0 * math.sin(a / (2 * r0)) - d;
+            let f1 = 2 * r1 * math.sin(a / (2 * r1)) - d;
+
+            for (let i = 0; i < maxIterations; i++) {
+                if (math.abs(f1 - f0) === 0) {
+                    // TODO horrible assumption, but this means the number is going to be large enough that we don't care about it.
+                    return 20;
+                    //throw new Error('Division by zero in secant method');
+                }
+
+                const rNext = r1 - (f1 * (r1 - r0)) / (f1 - f0);
+
+                if (math.abs(rNext - r1) < tolerance) {
+                    return rNext;
+                }
+
+                r0 = r1;
+                f0 = f1;
+                r1 = rNext;
+                f1 = 2 * r1 * math.sin(a / (2 * r1)) - d;
+            }
+
+            throw new Error('Failed to converge for parameters ' + a + ', ' + d + ', ' + r0 + ', ' + r1);
+        }
+
+        // derivative of 2*x*math.sin(0.076/ (2 * x))-0.075
+        // const radius = solveForR(arcLength, chord, chord / 2);
+        const radius = solveForRUsingSecant(arcLength, chord, chord * 2, chord / 2);
+
+        return radius;
+    },
+
+    /**
      * This method does the heavy-lifting of statistics calculation.
      *
      * What happens here?
@@ -135,9 +334,49 @@ BR.TrackAnalysis = L.Class.extend({
             maxspeed: {},
             surface: {},
             smoothness: {},
+            curvature: {},
+            grade: {},
+            trainConstruction: {},
         };
 
         this.totalRouteDistance = 0.0;
+
+        const myLatLngs = [];
+
+        for (let segmentIndex = 0; segments && segmentIndex < segments.length; segmentIndex++) {
+            for (
+                let coordinateIndex = 1;
+                coordinateIndex < segments[segmentIndex].feature.geometry.coordinates.length - 1;
+                coordinateIndex++
+            ) {
+                if (coordinateIndex == 0) {
+                    continue;
+                }
+
+                const coordinate = segments[segmentIndex].feature.geometry.coordinates[coordinateIndex];
+
+                myLatLngs.push(L.latLng(coordinate[1], coordinate[0], coordinate[2]));
+            }
+        }
+
+        var geojsonFeatures = geoDataExchange.buildGeojsonFeatures(myLatLngs, {
+            interpolate: false,
+            normalize: false,
+        });
+        var latLngToGradeMap = {};
+        var latLngToCurvatureMap = {};
+
+        for (let featureIndex = 0; featureIndex < geojsonFeatures[0]['features'].length; featureIndex++) {
+            const feature = geojsonFeatures[0]['features'][featureIndex];
+
+            for (let geoIndex = 0; geoIndex < feature['geometry']['coordinates'].length; geoIndex++) {
+                latLngToGradeMap[
+                    feature['geometry']['coordinates'][geoIndex][0] +
+                        ',' +
+                        feature['geometry']['coordinates'][geoIndex][1]
+                ] = feature['properties']['attributeType'];
+            }
+        }
 
         for (let segmentIndex = 0; segments && segmentIndex < segments.length; segmentIndex++) {
             for (
@@ -207,7 +446,105 @@ BR.TrackAnalysis = L.Class.extend({
                     }
                 }
             }
+
+            // Loop over the actual node points to determine if any violate curvature or grade rules
+            for (
+                let coordinateIndex = 1;
+                coordinateIndex < segments[segmentIndex].feature.geometry.coordinates.length - 1;
+                coordinateIndex++
+            ) {
+                if (coordinateIndex == 0) {
+                    continue;
+                }
+
+                const coordinate = segments[segmentIndex].feature.geometry.coordinates[coordinateIndex];
+
+                const point1 = segments[segmentIndex].feature.geometry.coordinates[coordinateIndex - 1];
+                const point2 = coordinate;
+                const point3 = segments[segmentIndex].feature.geometry.coordinates[coordinateIndex + 1];
+
+                // Based on the height graph, it looks like the grade is calculated at the point we are going TO
+                // So that is how we should count distance
+                const grade = latLngToGradeMap[`${point2[0]},${point2[1]}`];
+
+                const curvature = this.calculateRadiusOfCurvature(point1, point2, point3);
+
+                console.log(`point ${coordinate}: radius ${curvature}, grade ${grade}`);
+
+                latLngToCurvatureMap[coordinate[0] + ',' + coordinate[1]] = curvature;
+
+                if (typeof analysis.grade['valid'] === 'undefined') {
+                    analysis.grade['valid'] = {
+                        formatted_name: 'valid', //i18next.t('sidebar.analysis.data.trainConstruction.curvature'),
+                        name: 'valid',
+                        subtype: '',
+                        distance: 0.0,
+                    };
+                }
+
+                if (typeof analysis.grade['invalid'] === 'undefined') {
+                    analysis.grade['invalid'] = {
+                        formatted_name: 'invalid', //i18next.t('sidebar.analysis.data.trainConstruction.curvature'),
+                        name: 'invalid',
+                        subtype: '',
+                        distance: 0.0,
+                    };
+                }
+
+                if (typeof analysis.trainConstruction['valid'] === 'undefined') {
+                    analysis.trainConstruction['valid'] = {
+                        formatted_name: 'valid', //i18next.t('sidebar.analysis.data.trainConstruction.curvature'),
+                        name: 'valid',
+                        subtype: '',
+                        distance: 0.0,
+                    };
+                }
+
+                if (typeof analysis.trainConstruction['invalid'] === 'undefined') {
+                    analysis.trainConstruction['invalid'] = {
+                        formatted_name: 'invalid', //i18next.t('sidebar.analysis.data.trainConstruction.curvature'),
+                        name: 'invalid',
+                        subtype: '',
+                        distance: 0.0,
+                    };
+                }
+
+                if (curvature > 0.4) {
+                    analysis.trainConstruction['valid']['distance'] += geolib.getDistance(
+                        { longitude: point1[0], latitude: point1[1] },
+                        { longitude: point2[0], latitude: point2[1] }
+                    );
+                } else {
+                    analysis.trainConstruction['invalid']['distance'] += geolib.getDistance(
+                        { longitude: point1[0], latitude: point1[1] },
+                        { longitude: point2[0], latitude: point2[1] }
+                    );
+                }
+
+                if (grade > 2 || grade < -2) {
+                    analysis.grade['invalid']['distance'] += geolib.getDistance(
+                        { longitude: point1[0], latitude: point1[1] },
+                        { longitude: point2[0], latitude: point2[1] }
+                    );
+                } else {
+                    analysis.grade['valid']['distance'] += geolib.getDistance(
+                        { longitude: point1[0], latitude: point1[1] },
+                        { longitude: point2[0], latitude: point2[1] }
+                    );
+                }
+            }
+
+            const trackLatLngs = this.trackPolyline.getLatLngs();
+
+            for (let i = 0; i < trackLatLngs.length; i++) {
+                trackLatLngs[i]['grade'] = latLngToGradeMap[`${trackLatLngs[i]['lng']},${trackLatLngs[i]['lat']}`];
+                trackLatLngs[i]['curvature'] =
+                    latLngToCurvatureMap[`${trackLatLngs[i]['lng']},${trackLatLngs[i]['lat']}`];
+            }
         }
+
+        BR.Grade = latLngToGradeMap;
+        BR.Curvature = latLngToCurvatureMap;
 
         return this.sortAnalysisData(analysis);
     },
@@ -379,6 +716,12 @@ BR.TrackAnalysis = L.Class.extend({
         $content.append(this.renderTable('smoothness', analysis.smoothness));
         $content.append($(`<h4 class="track-analysis-heading">${i18next.t('sidebar.analysis.header.maxspeed')}</h4>`));
         $content.append(this.renderTable('maxspeed', analysis.maxspeed));
+        $content.append($(`<h4 class="track-analysis-heading">${i18next.t('sidebar.analysis.header.grade')}</h4>`));
+        $content.append(this.renderTable('grade', analysis.grade));
+        $content.append(
+            $(`<h4 class="track-analysis-heading">${i18next.t('sidebar.analysis.header.trainconstruction')}</h4>`)
+        );
+        $content.append(this.renderTable('trainconstruction', analysis.trainConstruction));
     },
 
     /**
@@ -519,16 +862,53 @@ BR.TrackAnalysis = L.Class.extend({
         const polylines = [];
         const trackLatLngs = this.trackPolyline.getLatLngs();
 
-        for (let i = 0; i < this.trackEdges.edges.length; i++) {
-            if (this.wayTagsMatchesData(trackLatLngs[this.trackEdges.edges[i]], dataType, dataName, trackType)) {
-                const matchedEdgeIndexStart = i > 0 ? this.trackEdges.edges[i - 1] : 0;
-                const matchedEdgeIndexEnd = this.trackEdges.edges[i] + 1;
-                polylines.push(
-                    L.polyline(
-                        trackLatLngs.slice(matchedEdgeIndexStart, matchedEdgeIndexEnd),
-                        this.options.overlayStyle
-                    )
-                );
+        if (dataType === 'trainconstruction' || dataType === 'grade') {
+            const curPolyline = [];
+            let isValid = false;
+            for (let i = 0; i < trackLatLngs.length; i++) {
+                const curvature = trackLatLngs[i].curvature;
+                const grade = trackLatLngs[i].grade;
+
+                if (grade === undefined || curvature === undefined) {
+                    console.log('No grade or curvature found for this point');
+                    continue;
+                }
+
+                isValid = false;
+
+                if (dataType === 'trainconstruction' && curvature > 0.4) {
+                    isValid = true;
+                } else if (dataType === 'grade' && grade < 2) {
+                    isValid = true;
+                }
+
+                if ((dataName === 'valid' && isValid) || (dataName === 'invalid' && !isValid)) {
+                    curPolyline.push(trackLatLngs[i]);
+                } else {
+                    if (curPolyline.length > 1) {
+                        polylines.push(L.polyline(curPolyline, this.options.overlayStyle));
+                    }
+                    curPolyline.length = 0;
+                    curPolyline.push(trackLatLngs[i]);
+                }
+            }
+
+            if (curPolyline.length > 1 && ((dataName === 'valid' && isValid) || (dataName === 'invalid' && !isValid))) {
+                polylines.push(L.polyline(curPolyline, this.options.overlayStyle));
+                curPolyline.length = 0;
+            }
+        } else {
+            for (let i = 0; i < this.trackEdges.edges.length; i++) {
+                if (this.wayTagsMatchesData(trackLatLngs[this.trackEdges.edges[i]], dataType, dataName, trackType)) {
+                    const matchedEdgeIndexStart = i > 0 ? this.trackEdges.edges[i - 1] : 0;
+                    const matchedEdgeIndexEnd = this.trackEdges.edges[i] + 1;
+                    polylines.push(
+                        L.polyline(
+                            trackLatLngs.slice(matchedEdgeIndexStart, matchedEdgeIndexEnd),
+                            this.options.overlayStyle
+                        )
+                    );
+                }
             }
         }
 
@@ -655,5 +1035,21 @@ BR.TrackAnalysis = L.Class.extend({
         }
 
         return wayTagsArray;
+    },
+
+    /**
+     * @param point1 - The first point
+     * @param point2 - The second point
+     * @param point3 - The third point
+     *
+     * @returns {number} - The curvature of the three points
+     */
+    calculateCurvature(point1, point2, point3) {
+        // TODO: This is almost certainly wrong. I'm pretty sure this needs to be the arc radius approach.
+        const a = Math.sqrt(Math.pow(point2[0] - point1[0], 2) + Math.pow(point2[1] - point1[1], 2));
+        const b = Math.sqrt(Math.pow(point3[0] - point2[0], 2) + Math.pow(point3[1] - point2[1], 2));
+        const c = Math.sqrt(Math.pow(point1[0] - point3[0], 2) + Math.pow(point1[1] - point3[1], 2));
+
+        return a + b + c;
     },
 });

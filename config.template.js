@@ -57,6 +57,7 @@
         'fastbike-lowtraffic',
         'fastbike-asia-pacific',
         'hiking-mountain',
+        'interstate-rail',
     ];
 
     // Map old, renamed legacy profile to new name (from hash of shared or bookmarked URLs)

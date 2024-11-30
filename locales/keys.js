@@ -43,6 +43,7 @@ i18next.t('navbar.profile.river');
 i18next.t('navbar.profile.safety');
 i18next.t('navbar.profile.shortest');
 i18next.t('navbar.profile.trekking');
+i18next.t('navbar.profile.interstate-rail');
 i18next.t('navbar.profile.trekking-ignore-cr');
 i18next.t('navbar.profile.trekking-noferries');
 i18next.t('navbar.profile.trekking-nosteps');
