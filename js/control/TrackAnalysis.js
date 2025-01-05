@@ -509,7 +509,7 @@ BR.TrackAnalysis = L.Class.extend({
                     };
                 }
 
-                if (curvature > 0.4) {
+                if (curvature > 4.0) {
                     analysis.trainConstruction['valid']['distance'] += geolib.getDistance(
                         { longitude: point1[0], latitude: point1[1] },
                         { longitude: point2[0], latitude: point2[1] }
@@ -876,7 +876,7 @@ BR.TrackAnalysis = L.Class.extend({
 
                 isValid = false;
 
-                if (dataType === 'trainconstruction' && curvature > 0.4) {
+                if (dataType === 'trainconstruction' && curvature > 4.0) {
                     isValid = true;
                 } else if (dataType === 'grade' && grade < 2) {
                     isValid = true;
